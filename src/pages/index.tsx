@@ -1,4 +1,5 @@
 import { useState } from "react"
+import type { NextPage, GetServerSideProps } from "next"
 
 const catImages: string[] = [
     "https://cdn2.thecatapi.com/images/bpc.jpg",
@@ -6,19 +7,48 @@ const catImages: string[] = [
     "https://cdn2.thecatapi.com/images/6qi.jpg",
 ]
 
+interface CatCategory {
+    id: number
+    name: string
+}
+
+interface SearchCatImage {
+    breeds: string[]
+    categories: CatCategory[]
+    id: string
+    url: string
+    width: number
+    height: number
+}
+
+type SearchCatImageResponse = SearchCatImage[]
+
 const randomCatImage = ():string => {
     const index = Math.floor(Math.random() * catImages.length)
     // 猫画像を表示
     return catImages[index]
 }
 
-const IndexPage = () => {
-    const [catImageUrl, setCatImageUrl] = useState(
-        "https://cdn2.thecatapi.com/images/bpc.jpg"
-    )
+const fetchCatImage = async(): Promise<SearchCatImage> =>  {
+    const res = await fetch("https://api.thecatapi.com/v1/images/search")
+    const result = (await res.json()) as SearchCatImageResponse
+    return result[0]
+}
 
-    const handleClick = () => {
-        setCatImageUrl(randomCatImage())
+interface IndexPageProps {
+    initialCatImageUrl: string
+}
+
+fetchCatImage().then((image) => {
+    console.log(`猫の画像: ${image.url}`)
+})
+
+const IndexPage: NextPage<IndexPageProps> = ({ initialCatImageUrl}) => {
+    const [catImageUrl, setCatImageUrl] = useState(initialCatImageUrl)
+
+    const handleClick = async() => {
+        const image = await fetchCatImage()
+        setCatImageUrl(image.url)
     }
 
     return (
@@ -29,6 +59,15 @@ const IndexPage = () => {
             </div>
         </div>
     )
+}
+
+export const getServerSideProps: GetServerSideProps<IndexPageProps> = async() => {
+    const catImage = await fetchCatImage()
+    return {
+        props: {
+            initialCatImageUrl: catImage.url
+        }
+    }
 }
 
 export default IndexPage
